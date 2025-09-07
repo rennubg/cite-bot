@@ -12,6 +12,20 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, ContextTypes, Defaults, filters
 )
 
+from flask import Flask
+from threading import Thread
+
+# --- tiny keep-alive web server for Replit/UptimeRobot ---
+webapp = Flask(__name__)
+
+@webapp.get("/")
+def _home():
+    return "OK", 200
+
+def run_web():
+    port = int(os.environ.get("PORT", 8080))  # Replit gives PORT automatically
+    webapp.run(host="0.0.0.0", port=port)
+
 # ---------- config ----------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 socket_timeout_seconds = 12  # network timeout
@@ -446,6 +460,9 @@ def main():
         raise RuntimeError("BOT_TOKEN missing in .env")
     defaults = Defaults(parse_mode=ParseMode.HTML)  # enables <i> italics, <b> bold
     app = Application.builder().token(BOT_TOKEN).defaults(defaults).build()
+
+    # start the keep-alive web server in a background thread
+    Thread(target=run_web, daemon=True).start()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("ping", ping))
